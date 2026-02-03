@@ -174,8 +174,8 @@
 </div></div>
 <div class="container">
     <div class="hero">
-        <h1>Référentiel Compétences — Backlog</h1>
-        <p>Synchronisation temps réel entre Freelance.com et Emerton Data.</p>
+        <h1>Référentiel Compétences — Backlog Prestation</h1>
+        <p>Portail collaboratif de suivi. Synchronisation temps réel entre Freelance.com et le cabinet.</p>
         <div class="hero-meta">
             <div class="hero-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Sync : <span id="lastSync">—</span></div>
             <div class="hero-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Plateforme × Emerton</div>
@@ -188,6 +188,7 @@
     <div id="kanban" style="padding-top:8px">
         <div class="section-title">Suivi opérationnel — temps réel</div>
         <div class="filters-row"><div class="filter-chips" id="filters"></div></div>
+        <div class="filters-row"><div class="filter-chips" id="filtersOwner"></div><div class="filter-chips" id="filtersCrit"></div></div>
         <div id="boardArea"><div class="loader"><div class="loader-spinner"></div><div class="loader-text">Chargement depuis Supabase...</div></div></div>
     </div>
 </div>
@@ -239,7 +240,7 @@ const WS={
 
 const ICONS={doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',poc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',data:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',method:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'};
 
-let tickets=[],filter='all',dragId=null;
+let tickets=[],filter='all',filterOwner='all',filterCrit='all',dragId=null;
 
 // ─── SUPABASE ───
 async function loadTickets(){
@@ -273,7 +274,18 @@ function syncStamp(){document.getElementById('lastSync').textContent=new Date().
 // ─── RENDER ───
 function renderResources(){document.getElementById('resourceGrid').innerHTML=RESOURCES.map(r=>`<a class="resource-card" href="${r.url}" target="${r.url==='#'?'_self':'_blank'}"><div class="resource-icon ${r.icon}">${ICONS[r.icon]}</div><div class="resource-info"><h3>${r.title}</h3><p>${r.desc}</p></div><div class="resource-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div></a>`).join('')}
 
-function filtered(){return filter==='all'?tickets:tickets.filter(t=>t.ws===filter)}
+function filtered(){
+    return tickets.filter(t=>{
+        if(filter!=='all'&&t.ws!==filter)return false;
+        if(filterOwner!=='all'){
+            const isEmerton=t.owner.includes('Emerton');
+            if(filterOwner==='emerton'&&!isEmerton)return false;
+            if(filterOwner==='plateforme'&&isEmerton)return false;
+        }
+        if(filterCrit!=='all'&&t.crit!==filterCrit)return false;
+        return true;
+    });
+}
 
 function renderProgress(){
     const f=filtered(),total=f.length,done=f.filter(t=>t.status==='done').length,prog=f.filter(t=>t.status==='progress').length,blk=f.filter(t=>t.status==='blocked').length,crit=f.filter(t=>t.crit==='critique'&&t.status!=='done').length;
@@ -288,8 +300,18 @@ function renderFilters(){
     const counts={all:tickets.length};Object.keys(WS).forEach(k=>counts[k]=tickets.filter(t=>t.ws===k).length);
     const chips=[{k:'all',l:`Tous (${counts.all})`},...Object.entries(WS).filter(([k])=>counts[k]>0).map(([k,v])=>({k,l:`${v.short} (${counts[k]})`}))];
     document.getElementById('filters').innerHTML=chips.map(c=>`<button class="chip${filter===c.k?' on':''}" onclick="setFilter('${c.k}')">${c.l}</button>`).join('');
+    const ePl=tickets.filter(t=>!t.owner.includes('Emerton')).length,eEm=tickets.filter(t=>t.owner.includes('Emerton')).length;
+    document.getElementById('filtersOwner').innerHTML=[
+        {k:'all',l:`Tous owners`},{k:'plateforme',l:`Plateforme (${ePl})`},{k:'emerton',l:`Emerton (${eEm})`}
+    ].map(c=>`<button class="chip${filterOwner===c.k?' on':''}" onclick="setFilterOwner('${c.k}')">${c.l}</button>`).join('');
+    const cCrit=tickets.filter(t=>t.crit==='critique').length,cHaut=tickets.filter(t=>t.crit==='haute').length,cMoy=tickets.filter(t=>t.crit==='moyenne').length;
+    document.getElementById('filtersCrit').innerHTML=[
+        {k:'all',l:`Toutes criticités`},{k:'critique',l:`Critique (${cCrit})`},{k:'haute',l:`Haute (${cHaut})`},{k:'moyenne',l:`Moyenne (${cMoy})`}
+    ].map(c=>`<button class="chip${filterCrit===c.k?' on':''}" onclick="setFilterCrit('${c.k}')">${c.l}</button>`).join('');
 }
 function setFilter(f){filter=f;renderFilters();renderBoard();renderProgress()}
+function setFilterOwner(f){filterOwner=f;renderFilters();renderBoard();renderProgress()}
+function setFilterCrit(f){filterCrit=f;renderFilters();renderBoard();renderProgress()}
 
 function isOverdue(d){
     if(!d||d==='A définir')return false;

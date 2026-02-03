@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Référentiel Compétences — Backlog</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root{--bg:#0B0D13;--surface:#14171F;--surface-2:#1A1E2A;--surface-3:#212636;--border:#252A3A;--border-light:#323850;--text:#E2E4EA;--text-muted:#8A8FA6;--text-dim:#555978;--white:#FFF;
+        --ws-structure:#3B82F6;--ws-cadrage:#8B5CF6;--ws-poc:#10B981;--ws-test:#F59E0B;--ws-comm:#EC4899;--ws-integ:#EF4444;--ws-deploy:#F97316;
+        --crit-critique:#EF4444;--crit-haute:#F59E0B;--crit-moyenne:#6B7280;
+        --radius:10px;--radius-sm:6px}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+        .topbar{position:sticky;top:0;z-index:50;background:rgba(11,13,19,.85);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:0 40px}
+        .topbar-inner{max-width:1440px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:52px}
+        .topbar-brand{font-size:14px;font-weight:700;color:var(--white);display:flex;align-items:center;gap:8px}
+        .topbar-brand span{font-size:10px;font-weight:600;background:rgba(59,130,246,.08);color:var(--ws-structure);padding:2px 8px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px}
+        .topbar-right{display:flex;align-items:center;gap:12px}
+        .topbar-links{display:flex;gap:4px}
+        .topbar-links a{font-size:12.5px;font-weight:500;color:var(--text-dim);text-decoration:none;padding:6px 12px;border-radius:6px;transition:all .15s}
+        .topbar-links a:hover{color:var(--text);background:var(--surface-2)}
+        .topbar-links a.active{color:var(--white);background:var(--surface-2)}
+        .sync-badge{font-size:10px;font-weight:600;padding:4px 10px;border-radius:12px;display:flex;align-items:center;gap:5px}
+        .sync-badge.online{background:rgba(16,185,129,.1);color:#10B981;border:1px solid rgba(16,185,129,.2)}
+        .sync-badge.offline{background:rgba(239,68,68,.1);color:#EF4444;border:1px solid rgba(239,68,68,.2)}
+        .sync-dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 2s infinite}
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        .container{max-width:1440px;margin:0 auto;padding:0 40px}
+        .hero{padding:44px 0 36px}
+        .hero h1{font-size:26px;font-weight:700;color:var(--white);margin-bottom:6px}
+        .hero p{font-size:13.5px;color:var(--text-muted);max-width:640px;line-height:1.6}
+        .hero-meta{display:flex;gap:24px;margin-top:18px;flex-wrap:wrap}
+        .hero-meta-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-dim)}
+        .hero-meta-item svg{width:14px;height:14px;opacity:.6}
+        .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+        .section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+
+        /* Resources */
+        .resources{padding-bottom:36px}
+        .resource-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
+        .resource-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;display:flex;align-items:flex-start;gap:12px;transition:all .15s;cursor:pointer;text-decoration:none;color:inherit}
+        .resource-card:hover{border-color:var(--border-light);background:var(--surface-2);transform:translateY(-1px)}
+        .resource-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .resource-icon svg{width:16px;height:16px}
+        .resource-icon.doc{background:rgba(59,130,246,.1);color:var(--ws-structure)}
+        .resource-icon.poc{background:rgba(139,92,246,.1);color:var(--ws-cadrage)}
+        .resource-icon.data{background:rgba(16,185,129,.1);color:var(--ws-poc)}
+        .resource-icon.method{background:rgba(245,158,11,.1);color:var(--ws-test)}
+        .resource-info h3{font-size:13px;font-weight:600;color:var(--white);margin-bottom:2px}
+        .resource-info p{font-size:11.5px;color:var(--text-dim);line-height:1.4}
+        .resource-arrow{margin-left:auto;color:var(--text-dim);align-self:center;opacity:0;transition:all .15s}
+        .resource-card:hover .resource-arrow{opacity:1;transform:translateX(2px)}
+        .resource-arrow svg{width:14px;height:14px}
+
+        /* Progress */
+        .progress-section{padding-bottom:28px}
+        .progress-bar-container{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+        .pstat{text-align:center}
+        .pstat-val{font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;color:var(--white)}
+        .pstat-label{font-size:11px;color:var(--text-dim);margin-top:2px}
+        .progress-track{flex:1;min-width:200px;height:6px;background:var(--surface);border-radius:3px;overflow:hidden;display:flex}
+        .progress-seg{height:100%;transition:width .5s ease}
+        .progress-legend{display:flex;gap:16px;margin-top:12px;flex-wrap:wrap}
+        .legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-dim)}
+        .legend-dot{width:8px;height:8px;border-radius:50%}
+
+        /* Filters */
+        .filters-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+        .filter-chips{display:flex;gap:5px;flex-wrap:wrap}
+        .chip{padding:5px 12px;font-family:'DM Sans',sans-serif;font-size:11px;font-weight:600;border:1px solid var(--border);border-radius:20px;background:transparent;color:var(--text-dim);cursor:pointer;transition:all .15s;white-space:nowrap}
+        .chip:hover{color:var(--text-muted);border-color:var(--border-light)}
+        .chip.on{color:var(--white);border-color:var(--border-light);background:var(--surface-2)}
+
+        /* Board */
+        .board{display:flex;gap:12px;padding-bottom:60px;overflow-x:auto}
+        .col{min-width:270px;width:270px;flex-shrink:0;display:flex;flex-direction:column}
+        .col-head{display:flex;align-items:center;justify-content:space-between;padding:10px 0;margin-bottom:6px}
+        .col-head-left{display:flex;align-items:center;gap:8px}
+        .col-dot{width:8px;height:8px;border-radius:50%}
+        .col-name{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+        .col-cnt{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);background:var(--surface);padding:2px 7px;border-radius:10px}
+        .col-cards{flex:1;display:flex;flex-direction:column;gap:7px;padding:4px;border-radius:var(--radius);min-height:60px;transition:background .15s}
+        .col-cards.over{background:rgba(59,130,246,.04);outline:2px dashed var(--border-light);outline-offset:-2px}
+
+        /* Cards */
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:grab;transition:all .15s}
+        .card:hover{border-color:var(--border-light);background:var(--surface-2);transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,.25)}
+        .card:active{cursor:grabbing}
+        .card.dragging{opacity:.3;transform:scale(.96)}
+        .card.flash{animation:cardFlash .8s ease}
+        @keyframes cardFlash{0%{border-color:var(--ws-structure);box-shadow:0 0 16px rgba(59,130,246,.3)}100%{border-color:var(--border);box-shadow:none}}
+        .card-top{display:flex;align-items:center;gap:5px;margin-bottom:7px;flex-wrap:wrap}
+        .card-id{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;color:var(--text-dim)}
+        .tag{font-size:9px;font-weight:600;padding:2px 6px;border-radius:4px;text-transform:uppercase;letter-spacing:.3px;white-space:nowrap}
+        .tag-structure{color:var(--ws-structure);background:rgba(59,130,246,.08)}
+        .tag-cadrage{color:var(--ws-cadrage);background:rgba(139,92,246,.08)}
+        .tag-poc{color:var(--ws-poc);background:rgba(16,185,129,.08)}
+        .tag-test{color:var(--ws-test);background:rgba(245,158,11,.08)}
+        .tag-comm{color:var(--ws-comm);background:rgba(236,72,153,.08)}
+        .tag-integ{color:var(--ws-integ);background:rgba(239,68,68,.08)}
+        .tag-deploy{color:var(--ws-deploy);background:rgba(249,115,22,.08)}
+        .tag-critique{color:var(--crit-critique);background:rgba(239,68,68,.08)}
+        .tag-haute{color:var(--crit-haute);background:rgba(245,158,11,.08)}
+        .tag-moyenne{color:var(--crit-moyenne);background:rgba(107,114,128,.12)}
+        .tag-new{color:#10B981;background:rgba(16,185,129,.08);font-size:8px;letter-spacing:.4px}
+        .card-title{font-size:12.5px;font-weight:600;line-height:1.4;color:var(--white);margin-bottom:3px}
+        .card-deadline{font-size:10px;color:var(--crit-haute);display:flex;align-items:center;gap:4px;margin-top:5px}
+        .card-deadline.overdue{color:var(--crit-critique)}
+        .card-deadline.none{color:var(--text-dim)}
+        .card-deadline svg{width:10px;height:10px}
+        .card-foot{display:flex;align-items:center;justify-content:space-between;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+        .card-who{font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;display:flex;align-items:center;gap:5px;white-space:nowrap}
+        .card-who.plateforme{background:rgba(59,130,246,.1);color:var(--ws-structure);border:1px solid rgba(59,130,246,.2)}
+        .card-who.emerton{background:rgba(139,92,246,.1);color:var(--ws-cadrage);border:1px solid rgba(139,92,246,.2)}
+        .card-actions{display:flex;gap:3px}
+        .card-btn{background:none;border:1px solid transparent;color:var(--text-dim);cursor:pointer;padding:3px;border-radius:4px;display:flex;transition:all .15s;position:relative}
+        .card-btn:hover{color:var(--text);background:var(--surface-3);border-color:var(--border)}
+        .card-btn svg{width:12px;height:12px}
+        .card-btn .tip{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:var(--surface-3);border:1px solid var(--border-light);color:var(--text);font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;white-space:nowrap;opacity:0;pointer-events:none;transition:opacity .15s;z-index:10}
+        .card-btn:hover .tip{opacity:1}
+
+        /* Modal */
+        .overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);z-index:100;align-items:center;justify-content:center;padding:32px}
+        .overlay.on{display:flex}
+        .modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;width:100%;max-width:600px;max-height:85vh;overflow-y:auto;box-shadow:0 24px 48px rgba(0,0,0,.4)}
+        .modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+        .modal-head-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+        .modal-x{background:none;border:none;color:var(--text-dim);cursor:pointer;padding:4px;border-radius:6px;display:flex;transition:all .15s}
+        .modal-x:hover{color:var(--text);background:var(--surface-2)}
+        .modal-x svg{width:18px;height:18px}
+        .modal-body{padding:20px}
+        .modal-title{font-size:16px;font-weight:700;color:var(--white);margin-bottom:16px;line-height:1.4}
+        .msec{margin-bottom:16px}
+        .mlabel{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text-dim);margin-bottom:4px}
+        .mtext{font-size:13px;line-height:1.6;color:var(--text-muted)}
+        .mnote{background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.15);border-radius:var(--radius-sm);padding:10px 12px;font-size:12px;line-height:1.6;color:var(--crit-haute)}
+        .mdeps{display:flex;flex-wrap:wrap;gap:5px}
+        .mdep{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:500;padding:3px 8px;border-radius:4px;background:var(--surface-3);color:var(--text-muted);border:1px solid var(--border)}
+        .mselect{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;color:var(--white);cursor:pointer;width:100%;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23878BA0' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center}
+        .mselect:focus{outline:none;border-color:var(--ws-structure)}
+        .mselect option{background:var(--surface);color:var(--text)}
+        .mmeta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+        .mmeta-item{background:var(--bg);border-radius:var(--radius-sm);padding:10px 12px}
+        .mmeta-val{font-size:13px;font-weight:600;color:var(--white);margin-top:3px}
+        .mcomment-area{width:100%;min-height:80px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 14px;font-family:'DM Sans',sans-serif;font-size:13px;color:var(--white);resize:vertical;line-height:1.6}
+        .mcomment-area:focus{outline:none;border-color:var(--ws-structure)}
+        .mcomment-area::placeholder{color:var(--text-dim)}
+        .mcomment-btn{margin-top:8px;padding:8px 16px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;border:none;border-radius:var(--radius-sm);background:var(--ws-structure);color:var(--white);cursor:pointer;transition:all .15s}
+        .mcomment-btn:hover{background:#2563EB}
+        .mcomment-btn:disabled{opacity:.4;cursor:not-allowed}
+        .mcomment-saved{font-size:11px;color:#10B981;margin-left:8px;opacity:0;transition:opacity .3s}
+        .mcomment-saved.show{opacity:1}
+
+        /* Toast */
+        .toast{position:fixed;bottom:24px;right:24px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 18px;font-size:12.5px;font-weight:500;color:var(--text);box-shadow:0 8px 24px rgba(0,0,0,.3);z-index:200;transform:translateY(80px);opacity:0;transition:all .3s ease}
+        .toast.show{transform:translateY(0);opacity:1}
+        .loader{display:flex;align-items:center;justify-content:center;padding:100px 0;flex-direction:column;gap:16px}
+        .loader-spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--ws-structure);border-radius:50%;animation:spin .8s linear infinite}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .loader-text{font-size:13px;color:var(--text-dim)}
+        ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--border-light)}
+        @media(max-width:768px){.container{padding:0 16px}.topbar{padding:0 16px}.col{min-width:250px;width:250px}.hero h1{font-size:22px}.resource-grid{grid-template-columns:1fr}.topbar-inner{flex-wrap:wrap;height:auto;padding:8px 0}.filter-chips{gap:4px}}
+    </style>
+</head>
+<body>
+<div class="topbar"><div class="topbar-inner">
+    <div class="topbar-brand">FCOM <span>Référentiel</span></div>
+    <div class="topbar-right">
+        <div class="sync-badge offline" id="syncBadge"><div class="sync-dot"></div><span id="syncText">Connexion...</span></div>
+        <div class="topbar-links"><a href="#resources" class="active">Ressources</a><a href="#kanban">Kanban</a></div>
+    </div>
+</div></div>
+<div class="container">
+    <div class="hero">
+        <h1>Référentiel Compétences — Backlog Prestation</h1>
+        <p>Portail collaboratif de suivi. Synchronisation temps réel entre Freelance.com et le cabinet.</p>
+        <div class="hero-meta">
+            <div class="hero-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Sync : <span id="lastSync">—</span></div>
+            <div class="hero-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>Plateforme × Emerton</div>
+            <div class="hero-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg><span id="heroProgress">0%</span> complété</div>
+            <div class="hero-meta-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span id="heroCritique">0</span> critiques</div>
+        </div>
+    </div>
+    <div class="resources" id="resources"><div class="section-title">Ressources projet</div><div class="resource-grid" id="resourceGrid"></div></div>
+    <div class="progress-section"><div class="section-title">Avancement global</div><div class="progress-bar-container" id="progressBar"></div><div class="progress-legend" id="progressLegend"></div></div>
+    <div id="kanban" style="padding-top:8px">
+        <div class="section-title">Suivi opérationnel — temps réel</div>
+        <div class="filters-row"><div class="filter-chips" id="filters"></div></div>
+        <div id="boardArea"><div class="loader"><div class="loader-spinner"></div><div class="loader-text">Chargement depuis Supabase...</div></div></div>
+    </div>
+</div>
+<div class="overlay" id="overlay" onclick="closeModal(event)"><div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-head"><div class="modal-head-left" id="mHeadTags"></div><button class="modal-x" onclick="closeModal()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>
+    <div class="modal-body" id="mBody"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  CONFIG — REMPLACE CES VALEURS
+// ══════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://yliwlwfxlhkixonwwdfy.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_hiWAhyRvLcdoblVmAku7wg_e9LdHQmy';
+// ══════════════════════════════════════════════════════════
+
+// ══════════════════════════════════════════════════════════
+//  LIENS RESSOURCES — REMPLACE LES # PAR TES URLs
+// ══════════════════════════════════════════════════════════
+const RESOURCES = [
+    { icon:'doc',    title:'Documentation',  desc:'Brief cabinet, périmètre, livrables, état des lieux',     url:'#' },
+    { icon:'poc',    title:'POCs',           desc:'Prototypes saisie secteurs, métiers, compétences',        url:'#' },
+    { icon:'data',   title:'Data',           desc:'Extractions SI, analyses volumétriques, 377K tags',       url:'#' },
+    { icon:'method', title:'Référentiel V2', desc:'Structure actuelle, benchmarks concurrents, taxonomie',   url:'#' },
+];
+// ══════════════════════════════════════════════════════════
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const COLS=[
+    {id:'todo',label:'À faire',color:'#6B7280'},
+    {id:'progress',label:'En cours',color:'#3B82F6'},
+    {id:'blocked',label:'Bloqué',color:'#EF4444'},
+    {id:'done',label:'Terminé',color:'#10B981'},
+];
+const NEXT={todo:'progress',progress:'done',done:'done',blocked:'progress'};
+const PREV={todo:'todo',progress:'todo',done:'progress',blocked:'todo'};
+
+const WS={
+    structure:{label:'Structure & Data',short:'Structure',color:'#3B82F6'},
+    cadrage:{label:'Cadrage Fonctionnel',short:'Cadrage',color:'#8B5CF6'},
+    poc:{label:'POCs & UX',short:'POC',color:'#10B981'},
+    test:{label:'Tests & Validation',short:'Tests',color:'#F59E0B'},
+    comm:{label:'Communication',short:'Comm',color:'#EC4899'},
+    integ:{label:'Intégration & Prod',short:'Intég.',color:'#EF4444'},
+    deploy:{label:'Déploiement',short:'Déploi.',color:'#F97316'},
+};
+
+const ICONS={doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',poc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',data:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>',method:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>'};
+
+let tickets=[],filter='all',dragId=null;
+
+// ─── SUPABASE ───
+async function loadTickets(){
+    const{data,error}=await sb.from('tickets').select('*').order('id');
+    if(error){console.error(error);toast('❌ Erreur — vérifie tes clés Supabase');return}
+    tickets=data.map(r=>({id:r.id,ws:r.workstream,title:r.title,owner:r.owner,status:r.status,deadline:r.deadline,deps:r.dependencies,crit:r.criticite,source:r.source,notes:r.notes,comment:r.comment||''}));
+    setSyncOn();renderAll();
+}
+
+async function updateStatus(id,s){
+    const{error}=await sb.from('tickets').update({status:s,updated_at:new Date().toISOString()}).eq('id',id);
+    if(error){console.error(error);toast('❌ Erreur mise à jour');return}
+    const t=tickets.find(x=>x.id===id);if(t)t.status=s;
+    renderAll();toast(`${id} → ${COLS.find(c=>c.id===s)?.label}`);
+}
+
+function subscribeRT(){
+    sb.channel('tk').on('postgres_changes',{event:'UPDATE',schema:'public',table:'tickets'},p=>{
+        const r=p.new,t=tickets.find(x=>x.id===r.id);
+        if(t&&t.status!==r.status){t.status=r.status;renderAll();toast(`🔄 ${r.id} — mis à jour`);
+        setTimeout(()=>{const c=document.querySelector(`.card[data-id="${r.id}"]`);if(c)c.classList.add('flash')},50)}
+        if(t&&r.comment!==undefined)t.comment=r.comment||'';
+        syncStamp();
+    }).subscribe(s=>{if(s==='SUBSCRIBED')setSyncOn();else if(s==='CLOSED'||s==='CHANNEL_ERROR')setSyncOff()});
+}
+
+function setSyncOn(){const b=document.getElementById('syncBadge');b.classList.remove('offline');b.classList.add('online');document.getElementById('syncText').textContent='Temps réel';syncStamp()}
+function setSyncOff(){const b=document.getElementById('syncBadge');b.classList.remove('online');b.classList.add('offline');document.getElementById('syncText').textContent='Hors ligne'}
+function syncStamp(){document.getElementById('lastSync').textContent=new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}
+
+// ─── RENDER ───
+function renderResources(){document.getElementById('resourceGrid').innerHTML=RESOURCES.map(r=>`<a class="resource-card" href="${r.url}" target="${r.url==='#'?'_self':'_blank'}"><div class="resource-icon ${r.icon}">${ICONS[r.icon]}</div><div class="resource-info"><h3>${r.title}</h3><p>${r.desc}</p></div><div class="resource-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></div></a>`).join('')}
+
+function filtered(){return filter==='all'?tickets:tickets.filter(t=>t.ws===filter)}
+
+function renderProgress(){
+    const f=filtered(),total=f.length,done=f.filter(t=>t.status==='done').length,prog=f.filter(t=>t.status==='progress').length,blk=f.filter(t=>t.status==='blocked').length,crit=f.filter(t=>t.crit==='critique'&&t.status!=='done').length;
+    const pct=total?Math.round(done/total*100):0;
+    document.getElementById('heroProgress').textContent=pct+'%';
+    document.getElementById('heroCritique').textContent=crit;
+    document.getElementById('progressBar').innerHTML=`<div class="pstat"><div class="pstat-val">${pct}%</div><div class="pstat-label">complété</div></div><div class="pstat"><div class="pstat-val">${done}/${total}</div><div class="pstat-label">terminés</div></div><div class="pstat"><div class="pstat-val">${prog}</div><div class="pstat-label">en cours</div></div><div class="pstat"><div class="pstat-val">${blk}</div><div class="pstat-label">bloqués</div></div><div class="progress-track">${COLS.map(c=>{const w=total?(f.filter(t=>t.status===c.id).length/total)*100:0;return`<div class="progress-seg" style="width:${w}%;background:${c.color}"></div>`}).join('')}</div>`;
+    document.getElementById('progressLegend').innerHTML=COLS.map(c=>`<div class="legend-item"><div class="legend-dot" style="background:${c.color}"></div>${c.label} (${f.filter(t=>t.status===c.id).length})</div>`).join('');
+}
+
+function renderFilters(){
+    const counts={all:tickets.length};Object.keys(WS).forEach(k=>counts[k]=tickets.filter(t=>t.ws===k).length);
+    const chips=[{k:'all',l:`Tous (${counts.all})`},...Object.entries(WS).filter(([k])=>counts[k]>0).map(([k,v])=>({k,l:`${v.short} (${counts[k]})`}))];
+    document.getElementById('filters').innerHTML=chips.map(c=>`<button class="chip${filter===c.k?' on':''}" onclick="setFilter('${c.k}')">${c.l}</button>`).join('');
+}
+function setFilter(f){filter=f;renderFilters();renderBoard();renderProgress()}
+
+function isOverdue(d){
+    if(!d||d==='A définir')return false;
+    try{const dt=new Date(d);return dt<new Date()&&!isNaN(dt)}catch(e){return false}
+}
+function fmtDeadline(d){
+    if(!d)return null;
+    if(d==='A définir')return'À définir';
+    try{return new Date(d).toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})}catch(e){return d}
+}
+
+function renderBoard(){
+    const f=filtered();
+    document.getElementById('boardArea').innerHTML=`<div class="board">${COLS.map(c=>{const ct=f.filter(t=>t.status===c.id);return`<div class="col"><div class="col-head"><div class="col-head-left"><div class="col-dot" style="background:${c.color}"></div><span class="col-name" style="color:${c.color}">${c.label}</span></div><span class="col-cnt">${ct.length}</span></div><div class="col-cards" data-col="${c.id}" ondragover="dOver(event)" ondragleave="dLeave(event)" ondrop="dDrop(event,'${c.id}')">${ct.map(renderCard).join('')}</div></div>`}).join('')}</div>`;
+}
+
+function renderCard(t){
+    const ws=WS[t.ws]||{short:'?',color:'#666'};
+    const canF=t.status!=='done',canB=t.status!=='todo';
+    const dl=fmtDeadline(t.deadline);
+    const od=isOverdue(t.deadline);
+    const ownerClass=t.owner.includes('Emerton')?'emerton':'plateforme';
+    return`<div class="card" draggable="true" data-id="${t.id}" ondragstart="dStart(event,'${t.id}')" ondragend="dEnd(event)">
+        <div class="card-top">
+            <span class="card-id">${t.id}</span>
+            <span class="tag tag-${t.ws}">${ws.short}</span>
+            <span class="tag tag-${t.crit}">${t.crit.charAt(0).toUpperCase()+t.crit.slice(1)}</span>
+            ${t.source==='NOUVEAU'?'<span class="tag tag-new">NEW</span>':''}
+        </div>
+        <div class="card-title">${t.title}</div>
+        ${dl?`<div class="card-deadline ${od?'overdue':'none'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>${dl}</div>`:''}
+        <div class="card-foot">
+            <span class="card-who ${ownerClass}">${t.owner.replace('Equipe ','')}</span>
+            <div class="card-actions">
+                ${t.comment?`<span class="card-btn" style="color:var(--ws-structure);cursor:default"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="tip">Commentaire</span></span>`:``}
+                ${canB?`<button class="card-btn" onclick="event.stopPropagation();moveBack('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg><span class="tip">Reculer</span></button>`:``}
+                ${canF?`<button class="card-btn" onclick="event.stopPropagation();moveFwd('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg><span class="tip">Avancer</span></button>`:``}
+                <button class="card-btn" onclick="event.stopPropagation();openModal('${t.id}')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/></svg><span class="tip">Détails</span></button>
+            </div>
+        </div>
+    </div>`;
+}
+
+// ─── ACTIONS ───
+function moveFwd(id){const t=tickets.find(x=>x.id===id);if(t&&t.status!=='done')updateStatus(id,NEXT[t.status])}
+function moveBack(id){const t=tickets.find(x=>x.id===id);if(t&&t.status!=='todo')updateStatus(id,PREV[t.status])}
+
+function dStart(e,id){dragId=id;e.target.classList.add('dragging');e.dataTransfer.effectAllowed='move'}
+function dEnd(e){e.target.classList.remove('dragging');dragId=null;document.querySelectorAll('.col-cards').forEach(c=>c.classList.remove('over'))}
+function dOver(e){e.preventDefault();e.dataTransfer.dropEffect='move';e.currentTarget.classList.add('over')}
+function dLeave(e){e.currentTarget.classList.remove('over')}
+function dDrop(e,col){e.preventDefault();e.currentTarget.classList.remove('over');if(!dragId)return;const t=tickets.find(x=>x.id===dragId);if(t&&t.status!==col)updateStatus(t.id,col)}
+
+// ─── MODAL ───
+function openModal(id){
+    const t=tickets.find(x=>x.id===id);if(!t)return;
+    const ws=WS[t.ws]||{label:'?'};
+    const statL={todo:'À faire',progress:'En cours',done:'Terminé',blocked:'Bloqué'};
+    const dl=fmtDeadline(t.deadline);
+    const deps=t.deps?t.deps.split(',').map(d=>d.trim()).filter(Boolean):[];
+    document.getElementById('mHeadTags').innerHTML=`<span class="card-id" style="font-size:13px">${t.id}</span><span class="tag tag-${t.ws}" style="font-size:11px">${ws.short}</span><span class="tag tag-${t.crit}" style="font-size:11px">${t.crit}</span>${t.source==='NOUVEAU'?'<span class="tag tag-new" style="font-size:10px">NEW</span>':''}`;
+    document.getElementById('mBody').innerHTML=`
+        <div class="modal-title">${t.title}</div>
+        ${t.notes?`<div class="msec"><div class="mlabel">Notes / Risques</div><div class="mnote">⚠️ ${t.notes}</div></div>`:''}
+        ${deps.length?`<div class="msec"><div class="mlabel">Dépendances</div><div class="mdeps">${deps.map(d=>`<span class="mdep">${d}</span>`).join('')}</div></div>`:''}
+        <div class="msec"><div class="mlabel">Changer le statut</div><select class="mselect" onchange="updateStatus('${t.id}',this.value);closeModal()">${COLS.map(c=>`<option value="${c.id}"${c.id===t.status?' selected':''}>${statL[c.id]}</option>`).join('')}</select></div>
+        <div class="msec"><div class="mlabel">Commentaire</div><textarea class="mcomment-area" id="commentArea" placeholder="Ajouter un commentaire...">${t.comment}</textarea><div style="display:flex;align-items:center;margin-top:8px"><button class="mcomment-btn" onclick="saveComment('${t.id}')">Enregistrer</button><span class="mcomment-saved" id="commentSaved">✓ Sauvegardé</span></div></div>
+        <div class="mmeta">
+            <div class="mmeta-item"><div class="mlabel">Workstream</div><div class="mmeta-val">${ws.label}</div></div>
+            <div class="mmeta-item"><div class="mlabel">Criticité</div><div class="mmeta-val">${t.crit.charAt(0).toUpperCase()+t.crit.slice(1)}</div></div>
+            <div class="mmeta-item"><div class="mlabel">Owner</div><div class="mmeta-val">${t.owner}</div></div>
+            <div class="mmeta-item"><div class="mlabel">Deadline</div><div class="mmeta-val">${dl||'—'}</div></div>
+            <div class="mmeta-item"><div class="mlabel">Source</div><div class="mmeta-val">${t.source||'—'}</div></div>
+            <div class="mmeta-item"><div class="mlabel">Statut</div><div class="mmeta-val">${statL[t.status]}</div></div>
+        </div>`;
+    document.getElementById('overlay').classList.add('on');document.body.style.overflow='hidden';
+}
+function closeModal(e){if(e&&e.target!==e.currentTarget&&!e.target.closest('.modal-x'))return;document.getElementById('overlay').classList.remove('on');document.body.style.overflow=''}
+
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),2500)}
+
+async function saveComment(id){
+    const area=document.getElementById('commentArea');
+    const val=area.value.trim();
+    const btn=document.querySelector('.mcomment-btn');
+    btn.disabled=true;btn.textContent='Enregistrement...';
+    const{error}=await sb.from('tickets').update({comment:val||null,updated_at:new Date().toISOString()}).eq('id',id);
+    btn.disabled=false;btn.textContent='Enregistrer';
+    if(error){console.error(error);toast('❌ Erreur sauvegarde');return}
+    const t=tickets.find(x=>x.id===id);if(t)t.comment=val;
+    const saved=document.getElementById('commentSaved');saved.classList.add('show');setTimeout(()=>saved.classList.remove('show'),2000);
+    renderBoard();toast(`💬 Commentaire sauvegardé sur ${id}`);
+}
+function renderAll(){renderResources();renderFilters();renderBoard();renderProgress()}
+
+document.querySelectorAll('.topbar-links a').forEach(a=>{a.addEventListener('click',function(e){e.preventDefault();const el=document.querySelector(this.getAttribute('href'));if(el)el.scrollIntoView({behavior:'smooth'});document.querySelectorAll('.topbar-links a').forEach(x=>x.classList.remove('active'));this.classList.add('active')})});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal({target:document.getElementById('overlay'),currentTarget:document.getElementById('overlay')})});
+
+(async()=>{await loadTickets();subscribeRT()})();
+</script>
+</body>
+</html>
